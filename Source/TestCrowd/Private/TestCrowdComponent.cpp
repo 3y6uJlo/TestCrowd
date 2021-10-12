@@ -11,53 +11,62 @@
 
 UTestCrowdComponent::UTestCrowdComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 }
 
 void UTestCrowdComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
+	
+}
+
+void UTestCrowdComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	
 	UCrowdManager* CrowdManager = UCrowdManager::GetCurrent(this);
+	UE_LOG(LogTemp,Warning,TEXT("Agent want to be registered"));
 	if (CrowdManager)
 	{
 		ICrowdAgentInterface* IAgent = Cast<ICrowdAgentInterface>(this);
-		CrowdManager->RegisterAgent(IAgent);
+		CrowdManager->RegisterAgent(IAgent);		
+		UE_LOG(LogTemp,Warning,TEXT("Agent was registered"));
+	}
+	
+	const auto Controller = GetOwner<AController>();
+	if (Controller && Controller->GetCharacter() && Controller->GetCharacter()->GetMovementComponent())	
+	{
+		MoveComp = GetOwner<AController>()->GetCharacter()->GetMovementComponent();
+		UE_LOG(LogTemp,Warning,TEXT("MoveComp Set"));
 	}
 }
 
-
 FVector UTestCrowdComponent::GetCrowdAgentLocation() const
 {
-	if (!GetOwner<AController>() ||
-		!GetOwner<AController>()->GetPawn())
+	if (!MoveComp || !MoveComp->UpdatedComponent)
 		return FVector::ZeroVector;
-	return GetOwner<AController>()->GetPawn()->GetActorLocation();
+	
+	return MoveComp->UpdatedComponent->GetComponentLocation() - FVector(0,0,MoveComp->UpdatedComponent->Bounds.BoxExtent.Z);
 }
 
 FVector UTestCrowdComponent::GetCrowdAgentVelocity() const
 {
-	if (!GetOwner<AController>() ||
-		!GetOwner<AController>()->GetPawn() ||
-		!GetOwner<AController>()->GetPawn()->GetMovementComponent())
-		return FVector::ZeroVector;
-	const auto MovementComp = GetOwner<AController>()->GetPawn()->GetMovementComponent();
-
-	return (MovementComp ? MovementComp->Velocity : FVector::ZeroVector);
+	if (!MoveComp)
+		return FVector::ZeroVector;	
+	return MoveComp->Velocity;
 }
 
 void UTestCrowdComponent::GetCrowdAgentCollisions(float& CylinderRadius, float& CylinderHalfHeight) const
 {
-	if (!GetOwner<AController>() ||
-		!GetOwner<AController>()->GetCharacter() ||
-		!GetOwner<AController>()->GetCharacter()->GetCapsuleComponent())
-		return;
-	CylinderRadius = GetOwner<AController>()->GetCharacter()->GetCapsuleComponent()->GetScaledCapsuleRadius();
-	CylinderRadius = GetOwner<AController>()->GetCharacter()->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	if (MoveComp && MoveComp->UpdatedComponent)
+	{
+		MoveComp->UpdatedComponent->CalcBoundingCylinder(CylinderRadius, CylinderHalfHeight);
+	}
 }
 
 float UTestCrowdComponent::GetCrowdAgentMaxSpeed() const
 {
-	return GetOwner<AController>()->GetPawn()->GetMovementComponent()->GetMaxSpeed();
+	return MoveComp ? MoveComp->GetMaxSpeed() : 0.0f;
 }
 
 int32 UTestCrowdComponent::GetCrowdAgentAvoidanceGroup() const

@@ -14,7 +14,7 @@ public class TestCrowd : ModuleRules
 			"CoreUObject", 
 			"Engine", 
 			"InputCore",
-			"NavigationSystem"			
+			"AIModule"			
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
